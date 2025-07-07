@@ -1,7 +1,48 @@
 const router = require('express').Router();
+const bcrypt = require('bcryptjs')
+const User = require ('../auth/auth-model')
+const jwt = require('jsonwebtoken');
+const { userexist } = require('../middleware/user-exist');
+const secretKey = process.env.SECRET || "secret"
 
-router.post('/register', (req, res) => {
-  res.end('implement register, please!');
+
+
+
+function generateAccessToken(user) {
+  const payload = {
+    id: user.id,
+    username: user.username,
+    role: user.role
+  };
+  
+  const options = {
+    expiresIn: '1h' // Token will expire in 1 hour
+  };
+  
+  return jwt.sign(payload, secretKey, options);
+}
+
+router.post('/register', async (req, res) => {
+  try{
+    const { username, password } = req.body;
+    if(!username || !password){
+      return res.status(500).json({message:'username and password required'})
+    }
+    const existingUser = await User.findBy({username});
+    
+    if(existingUser){
+      return res.status(409).json({message:'username taken'})
+    }
+    const newUser = await User.add({
+      username,
+      password:bcrypt.hashSync(password, 8)
+    })
+  res.status(201).json(
+    newUser
+  )
+  }catch(err){
+    res.status(500).json({message:err.message})
+  }
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -29,8 +70,22 @@ router.post('/register', (req, res) => {
   */
 });
 
-router.post('/login', (req, res) => {
-  res.end('implement login, please!');
+router.post('/login', userexist, async (req, res) => {
+  try{
+    const { body:{password}, user } = req
+   
+    if ( bcrypt.compareSync (password, user.password)){
+      res.json ({message:`welcome, ${user.username}`, token:generateAccessToken(user)})
+
+    }else{
+      res.status(401).json({message:'invalid credentials'})
+    }
+  } catch (err){
+    res.status(500).json({message:err.message})
+  }
+ 
+ 
+  
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
