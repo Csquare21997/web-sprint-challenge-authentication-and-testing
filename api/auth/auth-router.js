@@ -2,10 +2,8 @@ const router = require('express').Router();
 const bcrypt = require('bcryptjs')
 const User = require ('../auth/auth-model')
 const jwt = require('jsonwebtoken');
-const { userexist } = require('../middleware/user-exist');
+const userexist = require('../middleware/user-exist');
 const secretKey = process.env.SECRET || "secret"
-
-
 
 
 function generateAccessToken(user) {
@@ -73,10 +71,15 @@ router.post('/register', async (req, res) => {
 router.post('/login', userexist, async (req, res) => {
   try{
     const { body:{password}, user } = req
-   
-    if ( bcrypt.compareSync (password, user.password)){
-      res.json ({message:`welcome, ${user.username}`, token:generateAccessToken(user)})
 
+    if(!user.username || !password){
+       return res.status(500).json({message:'username and password required'})
+    }
+   
+    if (bcrypt.compareSync (password, user.password)){
+      res.json({message:`welcome, ${user.username}`, token: generateAccessToken(user)})
+      console.log(user)
+   
     }else{
       res.status(401).json({message:'invalid credentials'})
     }
